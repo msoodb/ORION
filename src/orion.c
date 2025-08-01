@@ -1,43 +1,27 @@
+// orion.c
 
-#include "stm32f1xx.h"
-#include "FreeRTOS.h"
 #include "orion.h"
 
+// Example symmetric key (this would be secret and shared ahead of time)
+static const uint8_t secret_key[16] = {0x13, 0x57, 0x9B, 0xDF, 0x24, 0x68,
+                                       0xAC, 0xF0, 0x11, 0x22, 0x33, 0x44,
+                                       0xDE, 0xAD, 0xBE, 0xEF};
+
 void ORION_Init(void) {
-  // Enable USART1 clock
-  RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
-  RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
-
-  // Configure PA9 as AF push-pull (TX), PA10 as input floating (RX)
-  GPIOA->CRH &= ~(GPIO_CRH_CNF9 | GPIO_CRH_MODE9);
-  GPIOA->CRH |= (0b10 << GPIO_CRH_CNF9_Pos) |
-                (0b11 << GPIO_CRH_MODE9_Pos); // TX: AF PP, 50MHz
-
-  GPIOA->CRH &= ~(GPIO_CRH_CNF10 | GPIO_CRH_MODE10);
-  GPIOA->CRH |= (0b01 << GPIO_CRH_CNF10_Pos); // RX: input floating
-
-  // Configure USART1: 9600 baud @ 72MHz
-  USART1->BRR = 72000000 / 9600;
-  USART1->CR1 = USART_CR1_TE | USART_CR1_RE | USART_CR1_UE;
+  // In real cases, set up encryption hardware or key schedules
 }
 
-void ORION_Send(const char *data) {
-  while (*data) {
-    while (!(USART1->SR & USART_SR_TXE))
-      ;
-    USART1->DR = *data++;
-  }
+// Dummy XOR encryption for demonstration (replace with AES or other in future)
+int ORION_Encrypt(const uint8_t *input, size_t len, uint8_t *output,
+                  size_t *out_len) {
+  for (size_t i = 0; i < len; ++i)
+    output[i] = input[i] ^ secret_key[i % sizeof(secret_key)];
+  *out_len = len;
+  return 0;
 }
 
-void ORION_Receive(char *buffer, int max_len) {
-  int i = 0;
-  while (i < max_len - 1) {
-    while (!(USART1->SR & USART_SR_RXNE))
-      ;
-    char c = USART1->DR;
-    if (c == '\n' || c == '\r')
-      break;
-    buffer[i++] = c;
-  }
-  buffer[i] = '\0';
+int ORION_Decrypt(const uint8_t *input, size_t len, uint8_t *output,
+                  size_t *out_len) {
+  // XOR is symmetric
+  return ORION_Encrypt(input, len, output, out_len);
 }
